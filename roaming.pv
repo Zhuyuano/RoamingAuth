@@ -1,0 +1,364 @@
+
+(* -----  密码学原语定义 ----- *)
+type element.    (* 群元素类型 *)
+free pub: channel. (* 公共信道 *)
+free Sec: channel [private]. (* 安全信道 *)
+ 
+(* 双线性配对群参数 *)
+const g: element.   (* 生成元 *)
+const g0: element.  (* 系统参数 *)
+const g1: element.  (* g^α *)
+const g2: element.  (* g0^α *)
+const h: element.   (* 随机群元素 *)
+const u: element.  (* e(g0,g1) *)
+ 
+(* KGC *)
+free alpha: element [private].
+ 
+(* RSU公私钥 *)
+free PpubA: element.
+free sA:element [private].
+free PpubB: element. 
+free sB:element [private].
+
+free IDA:bitstring.
+free IDB:bitstring.
+
+(* Vehicles' private key*)
+(*Vi*)
+free ui:element [private].
+free wi:element [private].
+free di:element [private].
+free Si:element [private].
+free Ki:element [private].
+free ri:element [private].
+free Xi:element. (*vector X*)
+free x1i:element.
+free x2i:element.
+free x3i:element.
+free x4i:element.
+free x5i:element.
+free Yi:element. (*vector Y*)
+free y1i:element.
+free y2i:element.
+free y3i:element.
+free y4i:element.
+free y5i:element.
+(*Vj*)
+free uj:element [private].
+free wj:element [private].
+free dj:element [private].
+free Sj:element [private].
+free Kj:element [private].
+free rj:element [private].
+free Xj:element. (*vector X*)
+free x1j:element.
+free x2j:element.
+free x3j:element.
+free x4j:element.
+free x5j:element.
+free Yj:element. (*vector Y*)
+free y1j:element.
+free y2j:element.
+free y3j:element.
+free y4j:element.
+free y5j:element.
+
+(*Vehicles' public parameters*)
+(*Vi*)
+free Ui:element.
+free Wi:element.
+free PIDi:bitstring.
+(*Vj*)
+free Uj:element.
+free Wj:element.
+free PIDj:bitstring.
+
+(*vehicle i & identity*)
+free IDi:bitstring.
+(*vehicle j & identity*)
+free IDj:bitstring.
+
+(* Vehicles' cross-domain communication credentical*)
+free T3i:element [private].
+free T3i':element [private].
+free sigema_RVi:element [private].
+free taui:bitstring [private].
+free taui':bitstring [private].
+free certi:element [private].
+
+free T3j:element [private].
+free T3j':element [private].
+free sigema_RVj:element [private].
+free tauj:bitstring [private].
+free tauj':bitstring [private].
+free certj:element [private].
+
+(*8. session key*)
+free K_AB:element [private].
+free K_BA:element [private].
+
+(*9. else Parameters*)
+free M01i:bitstring.
+free M02i:bitstring.
+free M11i:bitstring.
+free M12i:bitstring.
+free C11:bitstring.
+free C12:bitstring.
+free C13:bitstring.
+free C14:bitstring.
+free C15:bitstring.
+free C2:bitstring.
+free C3:bitstring.
+
+ 
+(* ----- 哈希函数定义 ----- *)
+fun H0(element,element):element.
+fun H1(element, bitstring, element, element): element.
+fun H2(element):element.
+fun H3(element, element, bitstring, bitstring, bitstring, element, element, element): element.
+fun H4(element, element, bitstring, bitstring, bitstring, element, element, element): element.
+fun H5(bitstring, element, element, element, element): element.
+fun H6(element, element, bitstring, element, element, element): element.
+fun H7(element, element, bitstring, element, element, element): element.
+fun H8(bitstring,bitstring,element):bitstring. (*\tau*)
+fun H9(element,element,bitstring):element. (*cert*)
+
+ 
+(* ----- 数学运算定义 ----- *)
+fun Pairing(element, element): element. (* 双线性配对e(g,h) *)
+fun Mult(element, element): element.    (* 群乘法 *)
+fun Powzn(element, element): element.  (* 幂运算g^a *)
+fun Xor(element,bitstring):bitstring.
+fun Xor1(element,bitstring):bitstring.
+fun Xor2(element,element):bitstring.
+fun Xor3(element,bitstring):element.
+
+fun Add(element, element): element.     (* 加法运算 *)
+fun inv(element): element.              (* 逆元 *)
+
+(*Event*)
+event beginVehiclei(bitstring).
+event endVehiclei(bitstring).
+event beginVehiclej(bitstring).
+event endVehiclej(bitstring).
+
+(*Queries*)
+
+query attacker(K_AB).(*通过这些询问验证会话密钥的安全性*)
+query attacker(K_BA).
+query ID:bitstring; inj-event (endVehiclei(IDi)) ==> inj-event(beginVehiclei(IDi)).(*签名的不可伪造性；这两行语句不可以改*)
+query ID:bitstring; inj-event (endVehiclej(IDj)) ==> inj-event(beginVehiclej(IDj)).
+ 
+(*Processes*)
+
+(*注册*)
+let VehicleiReg=
+	in(Sec,(IDi:bitstring,Ui:element)); (*in：输入*)
+	
+	let Ui = Powzn(g,ui) in        (*每个运算let开始 in结束*)
+	let PIDi=Xor(H0(sA,Wi),IDi) in
+	let di=Add(wi,Mult(sA,H1(PpubA,PIDi,Ui,Wi))) in
+	new sumyi:element;
+	let sumyi = Add(y1i,Add(y2i,Add(y3i,Add(y4i,y5i)))) in
+	let Si= Mult(Powzn(g2,sumyi),Powzn(Mult(g1,h),ri)) in
+	let Ki= Powzn(g,ri) in  
+	0.
+let VehiclejReg=
+	in(Sec,(IDj:bitstring,Uj:element)); 
+	let Uj = Powzn(g,uj) in      
+	let PIDj=Xor(H0(sB,Wj),IDj) in
+	let dj=Add(wj,Mult(sB,H1(PpubB,PIDj,Uj,Wj))) in
+	new sumyj:element;
+	let sumyj = Add(y1j,Add(y2j,Add(y3j,Add(y4j,y5j)))) in
+	let Sj= Mult(Powzn(g2,sumyj),Powzn(Mult(g1,h),rj)) in
+	let Kj= Powzn(g,rj) in  
+	0.
+let RSUAReg=
+	in(Sec,(IDA:bitstring)); 
+	let PpubA = Powzn(g,sA) in 
+	0.
+let RSUBReg=
+	in(Sec,(IDB:bitstring)); 
+	let PpubB = Powzn(g,sB) in 
+	0.
+let RSU=VehicleiReg | VehiclejReg.
+let KGC=RSUAReg | RSUBReg.
+
+(*Vehicle Processes*)
+(*Vi Processes*)
+let Vehiclei=
+	(*Registration*)
+	let Ui = Powzn(g,ui) in 
+	out(Sec,(IDi,Ui));
+	
+	(*V&RSU Authentication*)
+	(*new t0i,t1i,T0i,T1i,D0i,M0.1i,M0.2i,sigmai,Gamma1i:element;*)
+	new t0i:element;
+	new t1i:element;
+	new T0i:element;
+	new T1i:element;
+	let T0i = Powzn(g,t0i) in 
+	let T1i = Powzn(g,t1i) in
+	let D0i = Powzn(PpubA,t0i) in
+	let M01i = Xor1(H2(D0i),PIDi) in
+	let M02i = Xor2(H2(D0i),T1i) in
+	new sigmai:element;
+	new Gamma1i:element;
+	let sigmai = Add(t1i,Add(Mult(H3(Ui,Wi,PIDi,M01i,M02i,T0i,T1i,Gamma1i),ui),Mult(H4(Ui,Wi,PIDi,M01i,M02i,T0i,T1i,Gamma1i),di))) in
+	out(Sec,(M01i,M02i,sigmai,T0i,Gamma1i));
+	
+	in(Sec,(M11i:bitstring,M12i:bitstring,sigma_RVi:element,T2i:element,Gamma2i:element));
+	new D1i':element;
+	let D1i' = Powzn(T2i,ui) in
+	let taui' = Xor1(H2(D1i'),M11i) in
+	let T3i' = Xor3(H2(D1i'),M12i) in
+	if(Powzn(g,sigma_RVi)= Mult(T3i',Powzn(PpubA,H5(taui',PpubA,Ui,Wi,T3i')))) then
+	let certi = H9(T3i',sigma_RVi,taui') in
+	
+	(*Cross-domain Authentication and Key Agreement*)
+	event beginVehiclei(IDi);  (*事件开始*)
+	
+	(*new ti,tA,Ti,Ri,sigma_Vi,Gamma3i:element;*)
+	new ti:element;
+	new tA:element;
+	let Ti = Powzn(g,ti) in 
+	let Ri = Powzn(g,tA) in
+	new sigma_Vi:element;
+	new Gamma3i:element;
+	let sigma_Vi = Add(Add(sigema_RVi,ti),Add(Mult(H6(Ui,Wi,PIDi,PpubA,Ti,Gamma3i),ui),Mult(H7(Ui,Wi,PIDi,PpubA,Ti,Gamma3i),di))) in
+	let C11=Mult(Powzn(Pairing(g0,g1),x1i),Powzn(u,ti)) in
+	let C12=Mult(Powzn(Pairing(g0,g1),x2i),Powzn(u,ti)) in
+	let C13=Mult(Powzn(Pairing(g0,g1),x3i),Powzn(u,ti)) in
+	let C14=Mult(Powzn(Pairing(g0,g1),x4i),Powzn(u,ti)) in
+	let C15=Mult(Powzn(Pairing(g0,g1),x5i),Powzn(u,ti)) in
+	let C2= Powzn(g,ti) in
+	let C3= Powzn(Mult(g1,h),ti) in
+    out(pub,(T3i',taui',sigma_Vi,Ti,Ri,C11,C12,C13,C14,C15,C2,C3,Gamma3i));
+	
+	in(pub,(T3j':element,tauj':bitstring,sigma_Vj:element,Tj:element,Rj:element,Gamma4j:element));
+	if(Powzn(g,sigma_Vj)= Mult(Mult(T3j',Powzn(PpubA,H5(tauj,PpubB,Uj,Wj,T3j'))),Mult(Mult(Tj,H6(Uj,Wj,PIDj,PpubB,Tj,Gamma3i)),Powzn(Mult(H1(PpubB,PIDj,Uj,Wj),Wi),H7(Uj,Wj,PIDj,PpubB,Tj,Gamma3i))))) then
+	let K_AB = Powzn(Rj,tA) in
+	event endVehiclei(IDi)
+	else 0.
+
+	(*Vj Processes*)
+	let Vehiclej=
+	(*Registration*)
+	let Uj = Powzn(g,uj) in 
+	out(Sec,(IDj,Uj));
+	
+	(*V&RSU Authentication*)
+	(*new t0j,t1j,T0j,T1j,D0j,M0.1j,M0.2j,sigmaj,Gamma1j:element;*)
+	new t0j:element;
+	new t1j:element;
+	new T0j:element;
+	new T1j:element;
+	let T0j = Powzn(g,t0j) in 
+	let T1j = Powzn(g,t1j) in
+	let D0j = Powzn(PpubA,t0j) in
+	let M01j = Xor1(H2(D0j),PIDj) in
+	let M02j = Xor2(H2(D0j),T1j) in
+	new sigmaj:element;
+	new Gamma1j:element;
+	let sigmaj = Add(t1j,Add(Mult(H3(Uj,Wj,PIDj,M01j,M02j,T0j,T1j,Gamma1j),uj),Mult(H4(Uj,Wj,PIDj,M01j,M02j,T0j,T1j,Gamma1j),dj))) in
+	out(Sec,(M01j,M02j,sigmaj,T0j,Gamma1j));
+	
+	in(Sec,(M11j:bitstring,M12j:bitstring,sigma_RVj:element,T2j:element,Gamma2j:element));
+	new D1j':element;
+	let D1j' = Powzn(T2j,uj) in
+	let tauj' = Xor1(H2(D1j'),M11j) in
+	let T3j' = Xor3(H2(D1j'),M12j) in
+	if(Powzn(g,sigma_RVj)= Mult(T3j',Powzn(PpubB,H5(tauj',PpubB,Uj,Wj,T3j)))) then
+	let certj = H9(T3j',sigma_RVj,tauj') in
+	
+	(*Cross-domain Authentication and Key Agreement*)
+	event beginVehiclei(IDj);  (*事件开始*)
+	
+	in(pub,(T3i':element,taui':bitstring,sigma_Vi:element,Ti:element,Ri:element,C11:element,C11:element,C12:element,C13:element,C14:element,C15:element,C2:element,C3:element,Gamma3i:element));
+	(*new tj,tB,Tj,Rj,sigma_Vj,Gamma4j:element;*)
+	new tj:element;
+	new tB:element;
+	let Tj = Powzn(g,tj) in 
+	let Rj = Powzn(g,tB) in
+	new sigma_Vj:element;
+	new Gamma4j:element;
+	let sigma_Vj = Add(Add(sigema_RVj,tj),Add(Mult(H6(Uj,Wj,PIDj,PpubB,Tj,Gamma4j),uj),Mult(H7(Uj,Wj,PIDj,PpubB,Tj,Gamma4j),dj))) in
+	new Q1:element;
+	new Q2:element;
+	new Q3:element;
+	new dec:element;
+	let Q1= Mult(Mult(Powzn(C11,y1j),Powzn(C12,y2j)),Mult(Mult(Powzn(C13,y3j),Powzn(C14,y4j)),Powzn(C15,y5j))) in
+	let Q2= Pairing(C3,Kj) in
+	let Q3= Pairing(C2,Sj) in
+	let K_BA = Powzn(Ri,tB) in
+    out(pub,(T3j',tauj',sigma_Vj,Tj,Rj,Gamma4j));
+	
+	event endVehiclei(IDj)
+	else 0.
+
+	
+(*RSU Processes*)
+(*RSUA Processes*)
+let RSUA=
+	(*Registration*)
+	let PpubA = Powzn(g,sA) in 
+	out(Sec,(IDA));
+	
+	(*V&RSU Authentication*)
+	in(Sec,(M01i:bitstring,M02i:bitstring,sigmai:element,T0i:element,Gamma1i:element));
+	new D0i':element;
+	let D0i' = Powzn(T0i,sA) in
+	new T1i':element;
+	let T1i' = Xor3(H2(D0i'),M02i) in
+	
+	(*new t2i,t3i,T2i,T3i,Q1i,M1.1i,M1.2i,Gamma2i:element;*)
+	new t2i:element;
+	new t3i:element;
+	new T2i:element;
+	new T3i:element;
+	let T2i = Powzn(g,t2i) in 
+	let T3i = Powzn(g,t3i) in
+	let D1i = Powzn(Ui,t2i) in
+	new Ei:element;
+	let taui = H8(IDA,PIDi,Ei) in
+	let M11i = Xor1(H2(D1i),taui) in
+	let M12i = Xor2(H2(D1i),T3i) in
+	new sigema_RVi:element;
+	new Gamma2i:element;
+	let sigma_RVi = Add(t3i,Mult(sA,H5(taui,PpubA,Ui,Wi,T3i))) in
+	out(Sec,(M11i,M12i,sigma_RVi,T2i,Gamma2i));
+	0.
+(*RSUB Processes*)
+let RSUB=
+	(*Registration*)
+	let PpubB = Powzn(g,sB) in 
+	out(Sec,(IDB));
+	
+	(*V&RSU Authentication*)
+	in(Sec,(M01j:bitstring,M02j:bitstring,sigmaj:element,T0j:element,Gamma1j:element));
+	new D0j':element;
+	let D0j' = Powzn(T0j,sB) in
+	new T1j':element;
+	let T1j' = Xor3(H2(D0j'),M02j) in
+	
+
+	new t2j:element;
+	new t3j:element;
+	new T2j:element;
+	new T3j:element;
+	let T2j = Powzn(g,t2j) in 
+	let T3j = Powzn(g,t3j) in
+	let D1j = Powzn(Ui,t2j) in
+	new Ej:element;
+	let TAUj = H8(IDB,PIDj,Ej) in
+	let M11j = Xor1(H2(D1j),tauj) in
+	let M12j = Xor2(H2(D1j),T3j) in
+	new sigema_RVj:element;
+	new Gamma2j:element;
+	let sigma_RVj = Add(t3j,Mult(sB,H5(tauj,PpubB,Uj,Wj,T3j))) in
+	out(Sec,(M11j,M12j,sigma_RVj,T2j,Gamma2j));
+	0.
+	(*Processes Replication*)
+	process 
+    (!Vehiclei | !Vehiclej | !KGC)
